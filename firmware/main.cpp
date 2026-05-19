@@ -50,13 +50,23 @@ void core0_task(void * pvParameters) {
             sensors.requestTemperatures();
             current_temp = sensors.getTempCByIndex(0);
             
-            // Corte de seguridad por temperatura (>50C)
-            if (current_temp > 50.0f && system_active) {
-                system_active = false;
-                thermal_fault = true;
-                Serial.printf("FALLO TERMICO: %.2fC. Sistema apagado.\n", current_temp);
-            } else if (current_temp < 45.0f) {
-                thermal_fault = false; // Reset de falla si enfria
+            // Gestion de seguridad por temperatura
+            if (current_temp > 50.0f) {
+                if (!thermal_fault) {
+                    thermal_fault = true;
+                    add_system_log("ALERTA: Temperatura critica detectada. Iniciando descenso de seguridad.");
+                }
+                
+                // Descenso paulatino: bajamos la altura objetivo gradualmente
+                if (target_height > 0.0f) {
+                    target_height -= 0.5f; // Rampa de descenso
+                    if (target_height < 0.0f) target_height = 0.0f;
+                } else {
+                    system_active = false; // Solo apagamos totalmente al llegar abajo
+                }
+            } else if (current_temp < 45.0f && thermal_fault) {
+                thermal_fault = false; 
+                add_system_log("Info: Temperatura normalizada. Sistema listo.");
             }
             temp_read_counter = 0;
         }
