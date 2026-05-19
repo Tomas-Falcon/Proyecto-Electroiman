@@ -101,8 +101,24 @@ modeButtons.forEach(btn => {
     });
 });
 
-// Telemetría (Escucha simulada)
-socket.on('telemetry', (data) => {
-    if(data.batt) document.getElementById('tel-batt').textContent = data.batt + '%';
-    if(data.core0) document.getElementById('tel-core0').textContent = data.core0 + ' kHz';
+// Sincronizacion de estado inicial
+socket.on('sync_state', (state) => {
+    isSystemOn = state.power;
+    updatePowerUI();
+    
+    rangeHeight.value = state.height;
+    valHeight.textContent = state.height;
+    
+    rangeOffsetY.value = state.offsetY;
+    valOffsetY.textContent = state.offsetY;
+    
+    modeButtons.forEach(btn => {
+        if (btn.getAttribute('data-mode') === state.mode) {
+            btn.classList.add('active');
+        } else {
+            b.classList.remove('active');
+        }
+    });
+    
+    addLog('Estado sincronizado con el servidor', 'network');
 });

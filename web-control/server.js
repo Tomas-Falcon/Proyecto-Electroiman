@@ -7,37 +7,51 @@ const app = express();
 const server = http.createServer(app);
 const io = new Server(server);
 
-// IP del ESP32 dentro de la VPN WireGuard
 const ESP32_IP = '10.8.0.50'; 
+
+// Estado persistente del sistema
+let systemState = {
+    power: false,
+    height: 20,
+    offsetY: 0,
+    mode: 'crucero'
+};
 
 app.use(express.static('public'));
 
 io.on('connection', (socket) => {
-    console.log('Usuario conectado al panel de control');
+    // Sincronizar estado actual con el cliente que se conecta
+    socket.emit('sync_state', systemState);
 
-    // Enviar comando al ESP32 (via WireGuard)
     socket.on('set_height', async (height) => {
+        systemState.height = height;
         try {
-            console.log(`Cambiando altura a: ${height}mm`);
-            // El ESP32 expondrá un pequeño servidor HTTP o WebSocket en el Core 1
             await axios.get(`http://${ESP32_IP}/set?height=${height}`);
         } catch (err) {
-            console.error('Error comunicando con el ESP32:', err.message);
+            console.error('Error de comunicacion con ESP32');
         }
     });
 
     socket.on('toggle_system', async (state) => {
+        systemState.power = state;
         try {
             const cmd = state ? 'start' : 'stop';
             await axios.get(`http://${ESP32_IP}/system?cmd=${cmd}`);
         } catch (err) {
-            console.error('Error al cambiar estado del sistema:', err.message);
+            console.error('Error de comunicacion con ESP32');
         }
+    });
+
+    socket.on('set_offset_y', (val) => {
+        systemState.offsetY = val;
+    });
+
+    socket.on('set_mode', (mode) => {
+        systemState.mode = mode;
     });
 });
 
 const PORT = 3000;
 server.listen(PORT, () => {
-    console.log(`Panel de Control corriendo en puerto ${PORT}`);
-    console.log(`Acceso via Tailscale: http://[TU_IP_TAILSCALE]:${PORT}`);
+    console.log(`Servidor iniciado en puerto ${PORT}`);
 });
