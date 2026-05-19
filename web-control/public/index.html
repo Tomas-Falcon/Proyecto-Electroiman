@@ -55,6 +55,10 @@
                         <span id="tel-core0">5.0 kHz</span>
                     </div>
                     <div class="tel-item">
+                        <small>Temperatura</small>
+                        <span id="tel-temp">-- °C</span>
+                    </div>
+                    <div class="tel-item">
                         <small>Batería Qi</small>
                         <span id="tel-batt">-- %</span>
                     </div>
@@ -66,7 +70,16 @@
             <section class="card logs-container">
                 <div class="logs-header">
                     <h2>Registros del Sistema</h2>
-                    <button id="btn-clear-logs" class="btn-small">Limpiar</button>
+                    <div class="log-filters">
+                        <select id="filter-type">
+                            <option value="all">Todos</option>
+                            <option value="info">Info</option>
+                            <option value="instruction">Instruccion</option>
+                            <option value="warning">Warning</option>
+                            <option value="danger">Danger</option>
+                        </select>
+                        <button id="btn-clear-logs" class="btn-small">Limpiar</button>
+                    </div>
                 </div>
                 <div id="log-list" class="log-list">
                     <!-- Los logs aparecerán aquí -->

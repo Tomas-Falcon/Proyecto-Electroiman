@@ -30,56 +30,84 @@ tabButtons.forEach(btn => {
 // Gestión de Logs
 const logList = document.getElementById('log-list');
 const btnClearLogs = document.getElementById('btn-clear-logs');
+const filterType = document.getElementById('filter-type');
 
 function addLog(msg, type = 'info') {
-    const time = new Date().toLocaleTimeString();
+    const now = new Date();
+    const time = now.toLocaleTimeString();
+    const date = now.toLocaleDateString();
+    
     const entry = document.createElement('div');
     entry.className = `log-entry ${type}`;
+    entry.dataset.type = type;
     
-    let tag = 'INFO';
-    if(type === 'control') tag = 'CTRL';
-    if(type === 'network') tag = 'NETW';
-    if(type === 'error') tag = 'ERR!';
+    let tag = type.substring(0, 4).toUpperCase();
+    if (type === 'instruction') tag = 'INST';
+    if (type === 'danger') tag = 'DANG';
 
     entry.innerHTML = `
-        <span class="log-time">${time}</span>
+        <span class="log-time" title="${date}">${time}</span>
         <span class="log-tag">${tag}</span>
         <span class="log-msg">${msg}</span>
     `;
     
     logList.prepend(entry);
+    applyFilter();
     
-    // Limitar a 50 logs para no saturar
-    if (logList.children.length > 50) {
+    if (logList.children.length > 100) {
         logList.lastChild.remove();
     }
 }
+
+function applyFilter() {
+    const selected = filterType.value;
+    Array.from(logList.children).forEach(entry => {
+        if (selected === 'all' || entry.dataset.type === selected) {
+            entry.style.display = 'block';
+        } else {
+            entry.style.display = 'none';
+        }
+    });
+}
+
+filterType.addEventListener('change', applyFilter);
 
 btnClearLogs.addEventListener('click', () => {
     logList.innerHTML = '';
 });
 
-// Modificación de los eventos existentes para incluir logs
+// Eventos actualizados
 btnPower.addEventListener('click', () => {
     isSystemOn = !isSystemOn;
     updatePowerUI();
-    const action = isSystemOn ? 'Encendido (Soft Start)' : 'Apagado (Soft Stop)';
-    addLog(`Sistema: ${action}`, 'control');
+    const action = isSystemOn ? 'Inicio suave de levitacion' : 'Descenso suave controlado';
+    addLog(action, 'instruction');
     socket.emit('toggle_system', isSystemOn);
 });
 
 rangeHeight.addEventListener('change', (e) => {
     const val = e.target.value;
-    addLog(`Target Z: ${val}mm`, 'control');
+    addLog(`Nueva altura objetivo establecida: ${val}mm`, 'instruction');
     socket.emit('set_height', val);
 });
 
 socket.on('connect', () => {
-    addLog('Conectado al servidor de control', 'network');
+    addLog('Conexion establecida con el servidor', 'info');
 });
 
-socket.on('disconnect', () => {
-    addLog('Desconectado del servidor', 'error');
+socket.on('telemetry', (data) => {
+    if(data.batt) document.getElementById('tel-batt').textContent = data.batt + '%';
+    if(data.core0) document.getElementById('tel-core0').textContent = data.core0 + ' kHz';
+    if(data.temp) {
+        const tempSpan = document.getElementById('tel-temp');
+        tempSpan.textContent = data.temp + ' °C';
+        if(data.temp > 50) {
+            tempSpan.style.color = '#ef4444';
+            addLog(`Temperatura critica detectada: ${data.temp}C`, 'danger');
+        } else {
+            tempSpan.style.color = 'var(--accent)';
+        }
+    }
 });
 
 // Gestión de Offset Eje Y

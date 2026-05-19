@@ -106,22 +106,29 @@ h1 { font-size: 1.2rem; font-weight: 800; text-transform: uppercase; letter-spac
     border-left: 3px solid #64748b;
 }
 
-.log-entry.control { border-left-color: var(--accent); }
-.log-entry.network { border-left-color: var(--on); }
-.log-entry.error { border-left-color: var(--off); }
-
-.log-time { color: #64748b; margin-right: 8px; font-size: 0.7rem; }
-.log-tag { 
-    text-transform: uppercase; 
-    font-weight: 800; 
-    font-size: 0.65rem; 
-    margin-right: 8px;
-    padding: 1px 4px;
-    border-radius: 3px;
-    background: #334155;
+.log-filters {
+    display: flex;
+    gap: 10px;
 }
 
-h2 { font-size: 0.9rem; color: #94a3b8; margin-bottom: 15px; text-transform: uppercase; }
+#filter-type {
+    background: #334155;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    padding: 2px 5px;
+    font-size: 0.75rem;
+}
+
+.log-entry.instruction { border-left-color: #a855f7; }
+.log-entry.warning { border-left-color: #f59e0b; }
+.log-entry.danger { border-left-color: #ef4444; }
+
+.telemetry-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 10px;
+}
 
 .btn {
     width: 100%;
