@@ -33,11 +33,13 @@
                     <button class="btn-mode active" data-mode="crucero">Crucero</button>
                     <button class="btn-mode" data-mode="carrera">Carrera</button>
                     <button class="btn-mode" data-mode="docking">Auto-Docking</button>
-                    <button class="btn-mode" data-mode="config">Configuracion</button>
+                    <button class="btn-mode" data-mode="alineacion">Alineacion</button>
+                    <button class="btn-mode btn-warning" data-mode="experimental">Experimental</button>
                 </div>
             </section>
 
-            <section class="card sliders">
+            <!-- Solo visible en modo Experimental -->
+            <section id="experimental-controls" class="card sliders" style="display: none;">
                 <div class="slider-group">
                     <div class="slider-header">
                         <label>Altura Objetivo (Z)</label>
@@ -45,16 +47,30 @@
                     </div>
                     <div class="value-display"><span id="val-height">20</span>mm</div>
                     <input type="range" id="range-height" min="10" max="60" value="20" step="5">
-                    <div class="slider-labels">
-                        <span>Min</span>
-                        <span>Med</span>
-                        <span>Max</span>
-                    </div>
                 </div>
                 <div class="slider-group">
                     <label>Ajuste Eje Y (Offset): <span id="val-offset-y">0</span></label>
                     <input type="range" id="range-offset-y" min="-50" max="50" value="0">
                 </div>
+                <div class="mode-creator">
+                    <button id="btn-save-draft" class="btn btn-small btn-accent">Guardar como Borrador</button>
+                </div>
+            </section>
+
+            <!-- Solo visible en modo Alineacion -->
+            <section id="alignment-panel" class="card alignment" style="display: none;">
+                <h2>Panel de Alineacion Haptica</h2>
+                <div class="alignment-grid">
+                    <label><input type="checkbox" id="align-z" checked> Altura (Z)</label>
+                    <label><input type="checkbox" id="align-rot" checked> Rotacion</label>
+                    <label><input type="checkbox" id="align-speed"> Velocidad</label>
+                </div>
+                <div class="captured-values">
+                    <p>Z: <span id="cap-z">--</span>mm</p>
+                    <p>Rot: <span id="cap-rot">--</span>°</p>
+                    <p>V: <span id="cap-speed">--</span>rpm</p>
+                </div>
+                <button id="btn-capture-config" class="btn btn-on">Capturar Configuracion</button>
             </section>
 
             <section class="card telemetry">

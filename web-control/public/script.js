@@ -12,10 +12,22 @@ const statusBadge = document.getElementById('status-badge');
 const tabButtons = document.querySelectorAll('.tab-btn');
 const tabContents = document.querySelectorAll('.tab-content');
 const logList = document.getElementById('log-list');
-const btnClearLogs = document.getElementById('btn-clear-logs');
-const filterType = document.getElementById('filter-type');
+
+// Paneles especiales
+const experimentalPanel = document.getElementById('experimental-controls');
+const alignmentPanel = document.getElementById('alignment-panel');
 
 let isSystemOn = false;
+let currentMode = 'crucero';
+
+// Configuraciones por defecto de los modos
+const modePresets = {
+    'crucero': { height: 40, offsetY: 0 },
+    'carrera': { height: 20, offsetY: 0 },
+    'docking': { height: 10, offsetY: 0 },
+    'alineacion': { height: 30, offsetY: 0 },
+    'experimental': { height: 20, offsetY: 0 }
+};
 
 // Gestion de Pestañas
 tabButtons.forEach(btn => {
@@ -28,61 +40,23 @@ tabButtons.forEach(btn => {
     });
 });
 
-// Gestion de Logs
 function addLog(msg, type = 'info') {
     const now = new Date();
     const time = now.toLocaleTimeString();
-    const date = now.toLocaleDateString();
-    
     const entry = document.createElement('div');
     entry.className = `log-entry ${type}`;
-    entry.dataset.type = type;
-    
     let tag = type.substring(0, 4).toUpperCase();
     if (type === 'instruction') tag = 'INST';
-    if (type === 'danger') tag = 'DANG';
-
-    entry.innerHTML = `
-        <span class="log-time" title="${date}">${time}</span>
-        <span class="log-tag">${tag}</span>
-        <span class="log-msg">${msg}</span>
-    `;
-    
+    entry.innerHTML = `<span class="log-time">${time}</span><span class="log-tag">${tag}</span><span class="log-msg">${msg}</span>`;
     logList.prepend(entry);
-    applyFilter();
-    
-    if (logList.children.length > 100) {
-        logList.lastChild.remove();
-    }
+    if (logList.children.length > 50) logList.lastChild.remove();
 }
 
-function applyFilter() {
-    const selected = filterType.value;
-    Array.from(logList.children).forEach(entry => {
-        if (selected === 'all' || entry.dataset.type === selected) {
-            entry.style.display = 'block';
-        } else {
-            entry.style.display = 'none';
-        }
-    });
-}
-
-filterType.addEventListener('change', applyFilter);
-btnClearLogs.addEventListener('click', () => { logList.innerHTML = ''; });
-
-// UI de Encendido
 function updatePowerUI() {
-    if (isSystemOn) {
-        btnPower.textContent = "APAGAR SISTEMA";
-        btnPower.classList.replace('btn-off', 'btn-on');
-        statusBadge.textContent = "Online";
-        statusBadge.classList.replace('offline', 'online');
-    } else {
-        btnPower.textContent = "ENCENDER SISTEMA";
-        btnPower.classList.replace('btn-on', 'btn-off');
-        statusBadge.textContent = "Offline";
-        statusBadge.classList.replace('online', 'offline');
-    }
+    btnPower.textContent = isSystemOn ? "APAGAR SISTEMA" : "ENCENDER SISTEMA";
+    btnPower.className = isSystemOn ? "btn btn-on" : "btn btn-off";
+    statusBadge.className = isSystemOn ? "badge online" : "badge offline";
+    statusBadge.textContent = isSystemOn ? "Online" : "Offline";
 }
 
 function getHeightDescription(val) {
@@ -93,104 +67,83 @@ function getHeightDescription(val) {
     return "Modo Prototipo / Riesgo";
 }
 
+function updateUIVisibility(mode) {
+    experimentalPanel.style.display = (mode === 'experimental') ? 'block' : 'none';
+    alignmentPanel.style.display = (mode === 'alineacion') ? 'block' : 'none';
+}
+
 // Eventos de Control
 btnPower.addEventListener('click', () => {
     isSystemOn = !isSystemOn;
     updatePowerUI();
-    const action = isSystemOn ? 'Inicio suave de levitacion' : 'Descenso suave controlado';
-    addLog(action, 'instruction');
     socket.emit('toggle_system', isSystemOn);
+    addLog(isSystemOn ? 'Encendido' : 'Apagado', 'instruction');
 });
 
 rangeHeight.addEventListener('input', (e) => {
-    const val = e.target.value;
-    valHeight.textContent = val;
-    valHeightDesc.textContent = getHeightDescription(val);
+    valHeight.textContent = e.target.value;
+    valHeightDesc.textContent = getHeightDescription(e.target.value);
 });
 
 rangeHeight.addEventListener('change', (e) => {
     socket.emit('set_height', e.target.value);
-    addLog(`Nueva altura: ${e.target.value}mm`, 'instruction');
-});
-
-rangeOffsetY.addEventListener('input', (e) => {
-    valOffsetY.textContent = e.target.value;
-});
-
-rangeOffsetY.addEventListener('change', (e) => {
-    socket.emit('set_offset_y', e.target.value);
 });
 
 modeButtons.forEach(btn => {
     btn.addEventListener('click', () => {
         modeButtons.forEach(b => b.classList.remove('active'));
         btn.classList.add('active');
-        const mode = btn.getAttribute('data-mode');
+        currentMode = btn.getAttribute('data-mode');
         
-        // Desbloquear limite de altura si es modo configuracion
-        if (mode === 'config') {
-            rangeHeight.max = 120; // 12cm para pruebas extremas
-            addLog('MODO CONFIGURACION: Limites extendidos a 120mm. ¡Monitorear consumo!', 'danger');
-        } else {
-            rangeHeight.max = 60; // 6cm limite estandar
-            if (parseInt(rangeHeight.value) > 60) {
-                rangeHeight.value = 60;
-                valHeight.textContent = 60;
-                valHeightDesc.textContent = getHeightDescription(60);
-                socket.emit('set_height', 60);
-            }
+        updateUIVisibility(currentMode);
+        
+        // Aplicar presets si no es experimental/alineacion
+        if (modePresets[currentMode]) {
+            const preset = modePresets[currentMode];
+            socket.emit('set_height', preset.height);
+            addLog(`Modo ${currentMode}: Altura auto-ajustada a ${preset.height}mm`, 'info');
         }
-        
-        socket.emit('set_mode', mode);
-        addLog(`Modo cambiado a: ${mode}`, 'instruction');
+
+        socket.emit('set_mode', currentMode);
     });
 });
 
+// Alineacion Haptica
+const btnCapture = document.getElementById('btn-capture-config');
+btnCapture.addEventListener('click', () => {
+    const config = {
+        z: document.getElementById('cap-z').textContent,
+        rot: document.getElementById('cap-rot').textContent,
+        speed: document.getElementById('cap-speed').textContent
+    };
+    addLog(`Configuracion capturada: Z=${config.z}, Rot=${config.rot}`, 'instruction');
+    // Aqui se podria enviar al servidor para guardar en DB/Archivo
+});
+
 // Sockets
-socket.on('connect', () => {
-    addLog('Conexion establecida', 'network');
-});
-
-socket.on('telemetry', (data) => {
-    if(data.batt) document.getElementById('tel-batt').textContent = data.batt + '%';
-    if(data.core0) document.getElementById('tel-core0').textContent = data.core0 + ' kHz';
-    if(data.temp) {
-        const tempSpan = document.getElementById('tel-temp');
-        tempSpan.textContent = data.temp + ' °C';
-        if(data.temp > 50) {
-            tempSpan.style.color = '#ef4444';
-            addLog(`ALERTA: Temperatura critica (${data.temp}C)`, 'danger');
-        } else {
-            tempSpan.style.color = 'var(--accent)';
-        }
-    }
-});
-
 socket.on('sync_state', (state) => {
     isSystemOn = state.power;
+    currentMode = state.mode;
     updatePowerUI();
+    updateUIVisibility(currentMode);
     
-    // Configurar maximo segun el modo guardado
-    if (state.mode === 'config') {
-        rangeHeight.max = 120;
-    } else {
-        rangeHeight.max = 60;
-    }
-
     rangeHeight.value = state.height;
     valHeight.textContent = state.height;
     valHeightDesc.textContent = getHeightDescription(state.height);
     
-    rangeOffsetY.value = state.offsetY;
-    valOffsetY.textContent = state.offsetY;
-    
     modeButtons.forEach(btn => {
-        if (btn.getAttribute('data-mode') === state.mode) {
-            btn.classList.add('active');
-        } else {
-            btn.classList.remove('active');
-        }
+        if (btn.getAttribute('data-mode') === currentMode) btn.classList.add('active');
+        else btn.classList.remove('active');
     });
+});
+
+socket.on('telemetry', (data) => {
+    if(data.temp) document.getElementById('tel-temp').textContent = data.temp + ' °C';
     
-    addLog('Estado sincronizado con el servidor', 'network');
+    // Si estamos en modo alineacion, actualizar valores capturados
+    if (currentMode === 'alineacion') {
+        if(data.height) document.getElementById('cap-z').textContent = data.height;
+        if(data.rot) document.getElementById('cap-rot').textContent = data.rot;
+        if(data.speed) document.getElementById('cap-speed').textContent = data.speed;
+    }
 });

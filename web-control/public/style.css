@@ -149,10 +149,32 @@ h1 { font-size: 1.2rem; font-weight: 800; text-transform: uppercase; letter-spac
     gap: 10px;
 }
 
-.btn-mode[data-mode="config"].active {
-    background: var(--off);
-    color: white;
-    animation: pulse-danger 2s infinite;
+.mode-grid button:nth-child(5) {
+    grid-column: 1 / span 2;
+}
+
+.alignment-grid {
+    display: flex;
+    justify-content: space-around;
+    background: rgba(0,0,0,0.2);
+    padding: 15px;
+    border-radius: 8px;
+    margin-bottom: 15px;
+}
+
+.captured-values {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 15px;
+    font-family: 'Courier New', monospace;
+    font-size: 0.9rem;
+    color: var(--accent);
+}
+
+.btn-accent { background: var(--accent); color: var(--bg); }
+
+.card.sliders, .card.alignment {
+    border-left: 4px solid var(--accent);
 }
 
 @keyframes pulse-danger {
