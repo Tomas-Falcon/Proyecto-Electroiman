@@ -8,6 +8,10 @@ const server = http.createServer(app);
 const io = new Server(server);
 
 const ESP32_IP = '10.8.0.50'; 
+const fs = require('fs');
+const path = require('path');
+
+const DATA_FILE = path.join(__dirname, 'data', 'system_state.json');
 
 const FACTORY_MODES = {
     'crucero': { name: 'Crucero', height: 40, offsetY: 0, type: 'factory' },
@@ -24,7 +28,35 @@ let systemState = {
     modes: { ...FACTORY_MODES }
 };
 
+// Cargar datos guardados al iniciar
+function loadState() {
+    try {
+        if (fs.existsSync(DATA_FILE)) {
+            const data = fs.readFileSync(DATA_FILE, 'utf8');
+            const savedState = JSON.parse(data);
+            systemState = { ...systemState, ...savedState };
+            console.log('Estado cargado desde disco');
+        }
+    } catch (err) {
+        console.error('Error al cargar estado:', err.message);
+    }
+}
+
+// Guardar datos a disco
+function saveState() {
+    try {
+        const dir = path.dirname(DATA_FILE);
+        if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+        fs.writeFileSync(DATA_FILE, JSON.stringify(systemState, null, 2));
+    } catch (err) {
+        console.error('Error al guardar estado:', err.message);
+    }
+}
+
+loadState();
+
 app.use(express.static('public'));
+app.use(express.json());
 
 io.on('connection', (socket) => {
     socket.emit('sync_state', systemState);
@@ -37,12 +69,14 @@ io.on('connection', (socket) => {
             offsetY: data.offsetY,
             type: 'custom'
         };
+        saveState();
         io.emit('sync_state', systemState);
     });
 
     socket.on('delete_mode', (id) => {
         if (systemState.modes[id] && systemState.modes[id].type !== 'factory') {
             delete systemState.modes[id];
+            saveState();
             io.emit('sync_state', systemState);
         }
     });
@@ -51,14 +85,18 @@ io.on('connection', (socket) => {
         systemState.modes = { ...FACTORY_MODES };
         systemState.mode = 'crucero';
         systemState.height = FACTORY_MODES.crucero.height;
+        saveState();
         io.emit('sync_state', systemState);
     });
 
-    socket.on('set_height', async (height) => {
-        systemState.height = height;
-        try {
-            await axios.get(`http://${ESP32_IP}/set?height=${height}`);
-        } catch (err) {
+    socket.on('set_settings', (data) => {
+        if (data.globalMaxHeight !== undefined) {
+            systemState.globalMaxHeight = data.globalMaxHeight;
+            saveState();
+            io.emit('sync_state', systemState);
+        }
+    });
+
             console.error('Error de comunicacion con ESP32');
         }
     });
