@@ -1,35 +1,33 @@
 const socket = io();
 
-// Elementos del DOM
+// DOM Elements
 const btnPower = document.getElementById('btn-power');
+const modeContainer = document.getElementById('mode-container');
+const experimentalPanel = document.getElementById('experimental-controls');
+const alignmentPanel = document.getElementById('alignment-panel');
 const rangeHeight = document.getElementById('range-height');
 const valHeight = document.getElementById('val-height');
 const valHeightDesc = document.getElementById('val-height-desc');
 const rangeOffsetY = document.getElementById('range-offset-y');
 const valOffsetY = document.getElementById('val-offset-y');
-const modeButtons = document.querySelectorAll('.btn-mode');
 const statusBadge = document.getElementById('status-badge');
 const tabButtons = document.querySelectorAll('.tab-btn');
 const tabContents = document.querySelectorAll('.tab-content');
 const logList = document.getElementById('log-list');
 
-// Paneles especiales
-const experimentalPanel = document.getElementById('experimental-controls');
-const alignmentPanel = document.getElementById('alignment-panel');
+// Settings Elements
+const globalMaxZInput = document.getElementById('global-max-z');
+const btnSaveSettings = document.getElementById('btn-save-settings');
+const btnResetFactory = document.getElementById('btn-reset-factory');
+const btnSaveDraft = document.getElementById('btn-save-draft');
+const btnCaptureAlign = document.getElementById('btn-capture-config');
 
 let isSystemOn = false;
 let currentMode = 'crucero';
+let globalMaxHeight = 60;
+let availableModes = {};
 
-// Configuraciones por defecto de los modos
-const modePresets = {
-    'crucero': { height: 40, offsetY: 0 },
-    'carrera': { height: 20, offsetY: 0 },
-    'docking': { height: 10, offsetY: 0 },
-    'alineacion': { height: 30, offsetY: 0 },
-    'experimental': { height: 20, offsetY: 0 }
-};
-
-// Gestion de Pestañas
+// Tabs Navigation
 tabButtons.forEach(btn => {
     btn.addEventListener('click', () => {
         const target = btn.getAttribute('data-target');
@@ -40,22 +38,19 @@ tabButtons.forEach(btn => {
     });
 });
 
+// UI Functions
 function addLog(msg, type = 'info') {
-    const now = new Date();
-    const time = now.toLocaleTimeString();
+    const time = new Date().toLocaleTimeString();
     const entry = document.createElement('div');
     entry.className = `log-entry ${type}`;
-    let tag = type.substring(0, 4).toUpperCase();
-    if (type === 'instruction') tag = 'INST';
-    entry.innerHTML = `<span class="log-time">${time}</span><span class="log-tag">${tag}</span><span class="log-msg">${msg}</span>`;
     logList.prepend(entry);
-    if (logList.children.length > 50) logList.lastChild.remove();
+    entry.innerHTML = `<span class="log-time">${time}</span> <span class="log-msg">${msg}</span>`;
 }
 
 function updatePowerUI() {
     btnPower.textContent = isSystemOn ? "APAGAR SISTEMA" : "ENCENDER SISTEMA";
     btnPower.className = isSystemOn ? "btn btn-on" : "btn btn-off";
-    statusBadge.className = isSystemOn ? "badge online" : "badge offline";
+    statusBadge.className = isSystemOn ? "badge " + (isSystemOn ? "online" : "offline");
     statusBadge.textContent = isSystemOn ? "Online" : "Offline";
 }
 
@@ -64,20 +59,65 @@ function getHeightDescription(val) {
     if (v <= 20) return "Aterrizaje / Bajo";
     if (v <= 40) return "Crucero / Estable";
     if (v <= 60) return "Alto / Exhibicion";
-    return "Modo Prototipo / Riesgo";
+    return "Experimental / Riesgo";
 }
 
-function updateUIVisibility(mode) {
-    experimentalPanel.style.display = (mode === 'experimental') ? 'block' : 'none';
-    alignmentPanel.style.display = (mode === 'alineacion') ? 'block' : 'none';
+function renderModes() {
+    modeContainer.innerHTML = '';
+    
+    // Modos Dinamicos (del servidor)
+    Object.keys(availableModes).forEach(id => {
+        const mode = availableModes[id];
+        const btn = document.createElement('button');
+        btn.className = `btn-mode ${currentMode === id ? 'active' : ''}`;
+        btn.textContent = mode.name;
+        btn.onclick = () => selectMode(id);
+        modeContainer.appendChild(btn);
+    });
+
+    // Botones Especiales Fijos
+    const btnAlign = document.createElement('button');
+    btnAlign.className = `btn-mode ${currentMode === 'alineacion' ? 'active' : ''}`;
+    btnAlign.textContent = 'Alineacion';
+    btnAlign.onclick = () => selectMode('alineacion');
+    modeContainer.appendChild(btnAlign);
+
+    const btnExp = document.createElement('button');
+    btnExp.className = `btn-mode btn-warning ${currentMode === 'experimental' ? 'active' : ''}`;
+    btnExp.textContent = 'Experimental';
+    btnExp.onclick = () => selectMode('experimental');
+    modeContainer.appendChild(btnExp);
 }
 
-// Eventos de Control
+function selectMode(id) {
+    currentMode = id;
+    experimentalPanel.style.display = (id === 'experimental') ? 'block' : 'none';
+    alignmentPanel.style.display = (id === 'alineacion') ? 'block' : 'none';
+
+    if (availableModes[id]) {
+        const mode = availableModes[id];
+        let targetZ = mode.height;
+        if (id !== 'experimental' && id !== 'alineacion') {
+            targetZ = Math.min(targetZ, globalMaxHeight);
+            rangeHeight.max = globalMaxHeight;
+        } else {
+            rangeHeight.max = 120;
+        }
+        socket.emit('set_height', targetZ);
+        rangeHeight.value = targetZ;
+        valHeight.textContent = targetZ;
+        valHeightDesc.textContent = getHeightDescription(targetZ);
+    }
+    
+    socket.emit('set_mode', id);
+    renderModes();
+}
+
+// Events
 btnPower.addEventListener('click', () => {
     isSystemOn = !isSystemOn;
     updatePowerUI();
     socket.emit('toggle_system', isSystemOn);
-    addLog(isSystemOn ? 'Encendido' : 'Apagado', 'instruction');
 });
 
 rangeHeight.addEventListener('input', (e) => {
@@ -89,94 +129,63 @@ rangeHeight.addEventListener('change', (e) => {
     socket.emit('set_height', e.target.value);
 });
 
-const globalMaxZInput = document.getElementById('global-max-z');
-const btnSaveSettings = document.getElementById('btn-save-settings');
-
-let globalMaxHeight = 60;
-
-// Gestion de Ajustes
 btnSaveSettings.addEventListener('click', () => {
     globalMaxHeight = parseInt(globalMaxZInput.value);
     socket.emit('set_settings', { globalMaxHeight });
-    addLog(`Configuracion global actualizada: Max Z = ${globalMaxHeight}mm`, 'info');
 });
 
-// Modificar la logica de modos para usar el limite global
-modeButtons.forEach(btn => {
-    btn.addEventListener('click', () => {
-        modeButtons.forEach(b => b.classList.remove('active'));
-        btn.classList.add('active');
-        currentMode = btn.getAttribute('data-mode');
-        
-        updateUIVisibility(currentMode);
-        
-        // Limites Dinamicos
-        if (currentMode === 'experimental') {
-            rangeHeight.max = 120;
-            addLog('Modo Experimental: Limites de altura extendidos (120mm)', 'danger');
-        } else if (currentMode === 'alineacion') {
-            rangeHeight.max = 100;
-        } else {
-            rangeHeight.max = globalMaxHeight; // Aplicar limite global
-            if (parseInt(rangeHeight.value) > globalMaxHeight) {
-                rangeHeight.value = globalMaxHeight;
-                valHeight.textContent = globalMaxHeight;
-                valHeightDesc.textContent = getHeightDescription(globalMaxHeight);
-                socket.emit('set_height', globalMaxHeight);
-            }
-        }
-        
-        if (modePresets[currentMode]) {
-            const preset = modePresets[currentMode];
-            let targetZ = preset.height;
-            // Asegurar que el preset no supere el maximo global en modos estandar
-            if (currentMode !== 'experimental' && currentMode !== 'alineacion') {
-                targetZ = Math.min(targetZ, globalMaxHeight);
-            }
-            socket.emit('set_height', targetZ);
-            addLog(`Modo ${currentMode}: Altura auto-ajustada a ${targetZ}mm`, 'info');
-        }
-
-        socket.emit('set_mode', currentMode);
-    });
+btnResetFactory.addEventListener('click', () => {
+    if(confirm('¿Restablecer todos los modos a valores de fabrica?')) {
+        socket.emit('reset_factory');
+    }
 });
 
-// Sincronizacion de estado inicial
+btnSaveDraft.addEventListener('click', () => {
+    const name = prompt('Nombre del nuevo modo:');
+    if (name) {
+        socket.emit('save_mode', {
+            name: name,
+            height: rangeHeight.value,
+            offsetY: rangeOffsetY.value
+        });
+    }
+});
+
+btnCaptureAlign.addEventListener('click', () => {
+    const name = prompt('Nombre para la configuracion capturada:');
+    if (name) {
+        socket.emit('save_mode', {
+            name: name,
+            height: document.getElementById('cap-z').textContent,
+            offsetY: 0
+        });
+    }
+});
+
+// Sockets
 socket.on('sync_state', (state) => {
     isSystemOn = state.power;
     currentMode = state.mode;
-    globalMaxHeight = state.globalMaxHeight || 60;
-    
+    globalMaxHeight = state.globalMaxHeight;
+    availableModes = state.modes;
+
     updatePowerUI();
-    updateUIVisibility(currentMode);
-    
     globalMaxZInput.value = globalMaxHeight;
+    
+    experimentalPanel.style.display = (currentMode === 'experimental') ? 'block' : 'none';
+    alignmentPanel.style.display = (currentMode === 'alineacion') ? 'block' : 'none';
 
-    // Configurar maximo segun el modo guardado
-    if (currentMode === 'experimental') rangeHeight.max = 120;
-    else if (currentMode === 'alineacion') rangeHeight.max = 100;
-    else rangeHeight.max = globalMaxHeight;
-
+    renderModes();
+    
     rangeHeight.value = state.height;
     valHeight.textContent = state.height;
     valHeightDesc.textContent = getHeightDescription(state.height);
-    
-    rangeOffsetY.value = state.offsetY;
-    valOffsetY.textContent = state.offsetY;
-    
-    modeButtons.forEach(btn => {
-        if (btn.getAttribute('data-mode') === currentMode) btn.classList.add('active');
-        else btn.classList.remove('active');
-    });
 });
 
 socket.on('telemetry', (data) => {
     if(data.temp) document.getElementById('tel-temp').textContent = data.temp + ' °C';
-    
-    // Si estamos en modo alineacion, actualizar valores capturados
-    if (currentMode === 'alineacion') {
+    if(currentMode === 'alineacion') {
         if(data.height) document.getElementById('cap-z').textContent = data.height;
         if(data.rot) document.getElementById('cap-rot').textContent = data.rot;
-        if(data.speed) document.getElementById('cap-speed').textContent = data.speed;
     }
 });

@@ -9,13 +9,19 @@ const io = new Server(server);
 
 const ESP32_IP = '10.8.0.50'; 
 
-// Estado persistente del sistema
+const FACTORY_MODES = {
+    'crucero': { name: 'Crucero', height: 40, offsetY: 0, type: 'factory' },
+    'carrera': { name: 'Carrera', height: 20, offsetY: 0, type: 'factory' },
+    'docking': { name: 'Auto-Docking', height: 10, offsetY: 0, type: 'factory' }
+};
+
 let systemState = {
     power: false,
     height: 20,
     offsetY: 0,
     mode: 'crucero',
-    globalMaxHeight: 60
+    globalMaxHeight: 60,
+    modes: { ...FACTORY_MODES }
 };
 
 app.use(express.static('public'));
@@ -23,11 +29,22 @@ app.use(express.static('public'));
 io.on('connection', (socket) => {
     socket.emit('sync_state', systemState);
 
-    socket.on('set_settings', (data) => {
-        if (data.globalMaxHeight !== undefined) {
-            systemState.globalMaxHeight = data.globalMaxHeight;
-            io.emit('sync_state', systemState); // Propagar cambio a todos
-        }
+    socket.on('save_mode', (data) => {
+        const id = data.id || data.name.toLowerCase().replace(/\s+/g, '_');
+        systemState.modes[id] = {
+            name: data.name,
+            height: data.height,
+            offsetY: data.offsetY,
+            type: 'custom'
+        };
+        io.emit('sync_state', systemState);
+    });
+
+    socket.on('reset_factory', () => {
+        systemState.modes = { ...FACTORY_MODES };
+        systemState.mode = 'crucero';
+        systemState.height = FACTORY_MODES.crucero.height;
+        io.emit('sync_state', systemState);
     });
 
     socket.on('set_height', async (height) => {

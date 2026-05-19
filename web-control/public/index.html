@@ -21,21 +21,6 @@
         </nav>
 
         <main id="control-view" class="tab-content active">
-...
-        <main id="settings-view" class="tab-content">
-            <section class="card settings-container">
-                <h2>Configuracion Global</h2>
-                <div class="setting-item">
-                    <label>Altura Maxima de Seguridad (Modos Estandar)</label>
-                    <div class="setting-control">
-                        <input type="number" id="global-max-z" value="60" min="20" max="100">
-                        <span>mm</span>
-                    </div>
-                    <small>Este limite no afecta a los modos Experimental o Alineacion.</small>
-                </div>
-                <button id="btn-save-settings" class="btn btn-accent" style="margin-top: 20px;">Aplicar Cambios Globales</button>
-            </section>
-        </main>
             <section class="card main-control">
                 <h2>Control Maestro (Soft Start/Stop)</h2>
                 <div class="power-toggle">
@@ -45,65 +30,49 @@
 
             <section class="card modes">
                 <h2>Modos de Operación</h2>
-                <div class="mode-grid">
-                    <button class="btn-mode active" data-mode="crucero">Crucero</button>
-                    <button class="btn-mode" data-mode="carrera">Carrera</button>
-                    <button class="btn-mode" data-mode="docking">Auto-Docking</button>
-                    <button class="btn-mode" data-mode="alineacion">Alineacion</button>
-                    <button class="btn-mode btn-warning" data-mode="experimental">Experimental</button>
+                <div id="mode-container" class="mode-grid">
+                    <!-- Modos cargados dinamicamente -->
                 </div>
             </section>
 
-            <!-- Solo visible en modo Experimental -->
             <section id="experimental-controls" class="card sliders" style="display: none;">
+                <h2>Modo Experimental</h2>
                 <div class="slider-group">
                     <div class="slider-header">
                         <label>Altura Objetivo (Z)</label>
-                        <span id="val-height-desc" class="status-text">Crucero</span>
+                        <span id="val-height-desc" class="status-text">Ajuste Manual</span>
                     </div>
                     <div class="value-display"><span id="val-height">20</span>mm</div>
-                    <input type="range" id="range-height" min="10" max="60" value="20" step="5">
+                    <input type="range" id="range-height" min="10" max="120" value="20" step="5">
                 </div>
                 <div class="slider-group">
                     <label>Ajuste Eje Y (Offset): <span id="val-offset-y">0</span></label>
                     <input type="range" id="range-offset-y" min="-50" max="50" value="0">
                 </div>
                 <div class="mode-creator">
-                    <button id="btn-save-draft" class="btn btn-small btn-accent">Guardar como Borrador</button>
+                    <button id="btn-save-draft" class="btn btn-accent btn-small">Guardar como Nuevo Modo</button>
                 </div>
             </section>
 
-            <!-- Solo visible en modo Alineacion -->
             <section id="alignment-panel" class="card alignment" style="display: none;">
-                <h2>Panel de Alineacion Haptica</h2>
+                <h2>Alineacion Haptica</h2>
                 <div class="alignment-grid">
-                    <label><input type="checkbox" id="align-z" checked> Altura (Z)</label>
+                    <label><input type="checkbox" id="align-z" checked> Altura</label>
                     <label><input type="checkbox" id="align-rot" checked> Rotacion</label>
-                    <label><input type="checkbox" id="align-speed"> Velocidad</label>
                 </div>
                 <div class="captured-values">
                     <p>Z: <span id="cap-z">--</span>mm</p>
                     <p>Rot: <span id="cap-rot">--</span>°</p>
-                    <p>V: <span id="cap-speed">--</span>rpm</p>
                 </div>
-                <button id="btn-capture-config" class="btn btn-on">Capturar Configuracion</button>
+                <button id="btn-capture-config" class="btn btn-on">Capturar y Crear Modo</button>
             </section>
 
             <section class="card telemetry">
                 <h2>Telemetría</h2>
                 <div class="telemetry-grid">
-                    <div class="tel-item">
-                        <small>Core 0</small>
-                        <span id="tel-core0">5.0 kHz</span>
-                    </div>
-                    <div class="tel-item">
-                        <small>Temperatura</small>
-                        <span id="tel-temp">-- °C</span>
-                    </div>
-                    <div class="tel-item">
-                        <small>Batería Qi</small>
-                        <span id="tel-batt">-- %</span>
-                    </div>
+                    <div class="tel-item"><small>Core 0</small><span id="tel-core0">5.0 kHz</span></div>
+                    <div class="tel-item"><small>Temperatura</small><span id="tel-temp">-- °C</span></div>
+                    <div class="tel-item"><small>Batería Qi</small><span id="tel-batt">-- %</span></div>
                 </div>
             </section>
         </main>
@@ -111,21 +80,31 @@
         <main id="logs-view" class="tab-content">
             <section class="card logs-container">
                 <div class="logs-header">
-                    <h2>Registros del Sistema</h2>
-                    <div class="log-filters">
-                        <select id="filter-type">
-                            <option value="all">Todos</option>
-                            <option value="info">Info</option>
-                            <option value="instruction">Instruccion</option>
-                            <option value="warning">Warning</option>
-                            <option value="danger">Danger</option>
-                        </select>
-                        <button id="btn-clear-logs" class="btn-small">Limpiar</button>
-                    </div>
+                    <h2>Registros</h2>
+                    <select id="filter-type">
+                        <option value="all">Todos</option>
+                        <option value="info">Info</option>
+                        <option value="instruction">Instruccion</option>
+                        <option value="danger">Danger</option>
+                    </select>
+                    <button id="btn-clear-logs" class="btn-small">Limpiar</button>
                 </div>
-                <div id="log-list" class="log-list">
-                    <!-- Los logs aparecerán aquí -->
+                <div id="log-list" class="log-list"></div>
+            </section>
+        </main>
+
+        <main id="settings-view" class="tab-content">
+            <section class="card settings-container">
+                <h2>Ajustes Globales</h2>
+                <div class="setting-item">
+                    <label>Altura Maxima de Seguridad (mm)</label>
+                    <input type="number" id="global-max-z" value="60" min="20" max="100">
                 </div>
+                <div class="setting-item">
+                    <label>Zona de Peligro</label>
+                    <button id="btn-reset-factory" class="btn btn-off btn-small">Restablecer Modos de Fabrica</button>
+                </div>
+                <button id="btn-save-settings" class="btn btn-accent">Guardar Ajustes</button>
             </section>
         </main>
     </div>
