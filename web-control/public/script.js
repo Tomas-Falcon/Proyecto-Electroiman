@@ -4,34 +4,31 @@ const socket = io();
 const btnPower = document.getElementById('btn-power');
 const rangeHeight = document.getElementById('range-height');
 const valHeight = document.getElementById('val-height');
+const valHeightDesc = document.getElementById('val-height-desc');
 const rangeOffsetY = document.getElementById('range-offset-y');
 const valOffsetY = document.getElementById('val-offset-y');
 const modeButtons = document.querySelectorAll('.btn-mode');
 const statusBadge = document.getElementById('status-badge');
+const tabButtons = document.querySelectorAll('.tab-btn');
+const tabContents = document.querySelectorAll('.tab-content');
+const logList = document.getElementById('log-list');
+const btnClearLogs = document.getElementById('btn-clear-logs');
+const filterType = document.getElementById('filter-type');
 
 let isSystemOn = false;
 
-// Gestión de Pestañas
-const tabButtons = document.querySelectorAll('.tab-btn');
-const tabContents = document.querySelectorAll('.tab-content');
-
+// Gestion de Pestañas
 tabButtons.forEach(btn => {
     btn.addEventListener('click', () => {
         const target = btn.getAttribute('data-target');
-        
         tabButtons.forEach(b => b.classList.remove('active'));
         tabContents.forEach(c => c.classList.remove('active'));
-        
         btn.classList.add('active');
         document.getElementById(target).classList.add('active');
     });
 });
 
-// Gestión de Logs
-const logList = document.getElementById('log-list');
-const btnClearLogs = document.getElementById('btn-clear-logs');
-const filterType = document.getElementById('filter-type');
-
+// Gestion de Logs
 function addLog(msg, type = 'info') {
     const now = new Date();
     const time = now.toLocaleTimeString();
@@ -71,22 +68,22 @@ function applyFilter() {
 }
 
 filterType.addEventListener('change', applyFilter);
+btnClearLogs.addEventListener('click', () => { logList.innerHTML = ''; });
 
-btnClearLogs.addEventListener('click', () => {
-    logList.innerHTML = '';
-});
-
-// Eventos actualizados
-btnPower.addEventListener('click', () => {
-    isSystemOn = !isSystemOn;
-    updatePowerUI();
-    const action = isSystemOn ? 'Inicio suave de levitacion' : 'Descenso suave controlado';
-    addLog(action, 'instruction');
-    socket.emit('toggle_system', isSystemOn);
-});
-
-// Gestión de Altura
-const valHeightDesc = document.getElementById('val-height-desc');
+// UI de Encendido
+function updatePowerUI() {
+    if (isSystemOn) {
+        btnPower.textContent = "APAGAR SISTEMA";
+        btnPower.classList.replace('btn-off', 'btn-on');
+        statusBadge.textContent = "Online";
+        statusBadge.classList.replace('offline', 'online');
+    } else {
+        btnPower.textContent = "ENCENDER SISTEMA";
+        btnPower.classList.replace('btn-on', 'btn-off');
+        statusBadge.textContent = "Offline";
+        statusBadge.classList.replace('online', 'offline');
+    }
+}
 
 function getHeightDescription(val) {
     const v = parseInt(val);
@@ -96,6 +93,15 @@ function getHeightDescription(val) {
     return "Maximo / Riesgo";
 }
 
+// Eventos de Control
+btnPower.addEventListener('click', () => {
+    isSystemOn = !isSystemOn;
+    updatePowerUI();
+    const action = isSystemOn ? 'Inicio suave de levitacion' : 'Descenso suave controlado';
+    addLog(action, 'instruction');
+    socket.emit('toggle_system', isSystemOn);
+});
+
 rangeHeight.addEventListener('input', (e) => {
     const val = e.target.value;
     valHeight.textContent = val;
@@ -103,34 +109,48 @@ rangeHeight.addEventListener('input', (e) => {
 });
 
 rangeHeight.addEventListener('change', (e) => {
-    const val = e.target.value;
-    addLog(`Nueva altura objetivo establecida: ${val}mm`, 'instruction');
-    socket.emit('set_height', val);
+    socket.emit('set_height', e.target.value);
+    addLog(`Nueva altura: ${e.target.value}mm`, 'instruction');
 });
 
-// ... resto de eventos ...
+rangeOffsetY.addEventListener('input', (e) => {
+    valOffsetY.textContent = e.target.value;
+});
 
-// Telemetria en tiempo real
+rangeOffsetY.addEventListener('change', (e) => {
+    socket.emit('set_offset_y', e.target.value);
+});
+
+modeButtons.forEach(btn => {
+    btn.addEventListener('click', () => {
+        modeButtons.forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        const mode = btn.getAttribute('data-mode');
+        socket.emit('set_mode', mode);
+        addLog(`Modo cambiado a: ${mode}`, 'instruction');
+    });
+});
+
+// Sockets
+socket.on('connect', () => {
+    addLog('Conexion establecida', 'network');
+});
+
 socket.on('telemetry', (data) => {
     if(data.batt) document.getElementById('tel-batt').textContent = data.batt + '%';
     if(data.core0) document.getElementById('tel-core0').textContent = data.core0 + ' kHz';
     if(data.temp) {
         const tempSpan = document.getElementById('tel-temp');
         tempSpan.textContent = data.temp + ' °C';
-        
-        // Alerta visual y log de peligro si supera 45C
-        if(data.temp > 45) {
+        if(data.temp > 50) {
             tempSpan.style.color = '#ef4444';
-            if (data.temp > 50) {
-                addLog(`ALERTA: Temperatura critica (${data.temp}C). Sistema en modo seguridad.`, 'danger');
-            }
+            addLog(`ALERTA: Temperatura critica (${data.temp}C)`, 'danger');
         } else {
             tempSpan.style.color = 'var(--accent)';
         }
     }
 });
 
-// Sincronizacion de estado inicial
 socket.on('sync_state', (state) => {
     isSystemOn = state.power;
     updatePowerUI();
