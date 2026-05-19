@@ -51,6 +51,19 @@ io.on('connection', (socket) => {
     });
 });
 
+// Simulacion de telemetria para pruebas
+setInterval(() => {
+    if (systemState.power) {
+        // Simular variaciones leves
+        const telemetry = {
+            temp: (25 + Math.random() * 5 + (systemState.height / 2)).toFixed(1),
+            core0: (4.9 + Math.random() * 0.2).toFixed(1),
+            batt: (80 + Math.random() * 5).toFixed(0)
+        };
+        io.emit('telemetry', telemetry);
+    }
+}, 2000);
+
 const PORT = 3000;
 server.listen(PORT, () => {
     console.log(`Servidor iniciado en puerto ${PORT}`);

@@ -38,6 +38,11 @@ void pid_compute_loop() {
     // Aquí irá la implementación matemática del PID
 }
 
+void add_system_log(const char* msg) {
+    Serial.printf("[LOG] %s\n", msg);
+    // En el futuro, enviar esto via WebSocket al servidor central
+}
+
 void core0_task(void * pvParameters) {
     Serial.printf("Core 0: Inicializando lazo de control en nucleo %d\n", xPortGetCoreID());
     

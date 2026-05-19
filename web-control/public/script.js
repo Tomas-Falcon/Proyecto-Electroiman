@@ -85,48 +85,49 @@ btnPower.addEventListener('click', () => {
     socket.emit('toggle_system', isSystemOn);
 });
 
+// Gestión de Altura
+const valHeightDesc = document.getElementById('val-height-desc');
+
+function getHeightDescription(val) {
+    const v = parseInt(val);
+    if (v <= 10) return "Aterrizaje / Bajo";
+    if (v <= 20) return "Crucero / Estable";
+    if (v <= 30) return "Alto / Exhibicion";
+    return "Maximo / Riesgo";
+}
+
+rangeHeight.addEventListener('input', (e) => {
+    const val = e.target.value;
+    valHeight.textContent = val;
+    valHeightDesc.textContent = getHeightDescription(val);
+});
+
 rangeHeight.addEventListener('change', (e) => {
     const val = e.target.value;
     addLog(`Nueva altura objetivo establecida: ${val}mm`, 'instruction');
     socket.emit('set_height', val);
 });
 
-socket.on('connect', () => {
-    addLog('Conexion establecida con el servidor', 'info');
-});
+// ... resto de eventos ...
 
+// Telemetria en tiempo real
 socket.on('telemetry', (data) => {
     if(data.batt) document.getElementById('tel-batt').textContent = data.batt + '%';
     if(data.core0) document.getElementById('tel-core0').textContent = data.core0 + ' kHz';
     if(data.temp) {
         const tempSpan = document.getElementById('tel-temp');
         tempSpan.textContent = data.temp + ' °C';
-        if(data.temp > 50) {
+        
+        // Alerta visual y log de peligro si supera 45C
+        if(data.temp > 45) {
             tempSpan.style.color = '#ef4444';
-            addLog(`Temperatura critica detectada: ${data.temp}C`, 'danger');
+            if (data.temp > 50) {
+                addLog(`ALERTA: Temperatura critica (${data.temp}C). Sistema en modo seguridad.`, 'danger');
+            }
         } else {
             tempSpan.style.color = 'var(--accent)';
         }
     }
-});
-
-// Gestión de Offset Eje Y
-rangeOffsetY.addEventListener('input', (e) => {
-    valOffsetY.textContent = e.target.value;
-});
-
-rangeOffsetY.addEventListener('change', (e) => {
-    socket.emit('set_offset_y', e.target.value);
-});
-
-// Gestión de Modos
-modeButtons.forEach(btn => {
-    btn.addEventListener('click', () => {
-        modeButtons.forEach(b => b.classList.remove('active'));
-        btn.classList.add('active');
-        const mode = btn.getAttribute('data-mode');
-        socket.emit('set_mode', mode);
-    });
 });
 
 // Sincronizacion de estado inicial
@@ -136,6 +137,7 @@ socket.on('sync_state', (state) => {
     
     rangeHeight.value = state.height;
     valHeight.textContent = state.height;
+    valHeightDesc.textContent = getHeightDescription(state.height);
     
     rangeOffsetY.value = state.offsetY;
     valOffsetY.textContent = state.offsetY;
@@ -144,7 +146,7 @@ socket.on('sync_state', (state) => {
         if (btn.getAttribute('data-mode') === state.mode) {
             btn.classList.add('active');
         } else {
-            b.classList.remove('active');
+            btn.classList.remove('active');
         }
     });
     

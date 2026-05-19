@@ -38,8 +38,17 @@
 
             <section class="card sliders">
                 <div class="slider-group">
-                    <label>Altura Objetivo (Z): <span id="val-height">20</span>mm</label>
-                    <input type="range" id="range-height" min="10" max="40" value="20">
+                    <div class="slider-header">
+                        <label>Altura Objetivo (Z)</label>
+                        <span id="val-height-desc" class="status-text">Crucero</span>
+                    </div>
+                    <div class="value-display"><span id="val-height">20</span>mm</div>
+                    <input type="range" id="range-height" min="10" max="40" value="20" step="5">
+                    <div class="slider-labels">
+                        <span>Min</span>
+                        <span>Med</span>
+                        <span>Max</span>
+                    </div>
                 </div>
                 <div class="slider-group">
                     <label>Ajuste Eje Y (Offset): <span id="val-offset-y">0</span></label>
