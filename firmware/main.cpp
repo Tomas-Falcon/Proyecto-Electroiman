@@ -12,6 +12,8 @@
 #include <BLEServer.h>
 #include <Preferences.h>
 
+#include <WebServer.h>
+
 // ==========================================
 // SECCIÓN CORE 0: CONTROL CRÍTICO (ESTILO C)
 // ==========================================
@@ -19,59 +21,55 @@
 volatile float target_height = 20.0f; // mm
 volatile bool system_active = false;
 
-// Prototipo de funciones de control (Lógica pura C)
-void pid_compute_loop() {
-    // Aquí irá la implementación matemática del PID
-    // Optimizada para no usar objetos
-}
-
-void core0_task(void * pvParameters) {
-    Serial.printf("Core 0: Inicializando lazo de control en nucleo %d\n", xPortGetCoreID());
-    for(;;) {
-        if(system_active) {
-            pid_compute_loop();
-        }
-        // Delay mínimo para evitar disparar el WDT del sistema
-        // pero manteniendo los ~5kHz deseados.
-        delayMicroseconds(200); 
-    }
-}
+// ... (resto del código de control)
 
 // ==========================================
 // SECCIÓN CORE 1: CONECTIVIDAD (ESTILO C++)
 // ==========================================
 Preferences prefs;
 static WireGuard wg;
+WebServer server(80); // Servidor en puerto 80
 
-void core1_task(void * pvParameters) {
-    Serial.printf("Core 1: Inicializando conectividad en nucleo %d\n", xPortGetCoreID());
-    
-    prefs.begin("config", true);
-    String ssid = prefs.getString("ssid", "");
-    String pass = prefs.getString("pass", "");
-    String wg_key = prefs.getString("wgk", "");
-    prefs.end();
+void handleRoot() {
+    server.send(200, "text/plain", "Proyecto Electroiman - API Online");
+}
 
-    if (ssid != "") {
-        WiFi.begin(ssid.c_str(), pass.c_str());
-        while (WiFi.status() != WL_CONNECTED) {
-            delay(500);
-            Serial.print(".");
-        }
-        Serial.println("\nWiFi Conectado");
-
-        // Configuración WireGuard
-        // Nota: Los parámetros IP y Endpoint deben venir de la configuración
-        // IPAddress local_ip(10, 8, 0, 50);
-        // wg.begin(local_ip, wg_key.c_str(), "SERVER_PUBLIC_KEY", "ENDPOINT_URL", 51820);
-    }
-
-    for(;;) {
-        // Aquí se procesarán los comandos entrantes de la Web (vía WireGuard)
-        // Ejemplo: Cambiar target_height o system_active
-        vTaskDelay(pdMS_TO_TICKS(100));
+void handleSetHeight() {
+    if (server.hasArg("height")) {
+        target_height = server.arg("height").toFloat();
+        server.send(200, "text/plain", "Altura actualizada");
+        Serial.printf("Nueva altura objetivo: %.2f mm\n", target_height);
+    } else {
+        server.send(400, "text/plain", "Falta parametro height");
     }
 }
+
+void handleSystem() {
+    if (server.hasArg("cmd")) {
+        String cmd = server.arg("cmd");
+        if (cmd == "start") system_active = true;
+        else if (cmd == "stop") system_active = false;
+        server.send(200, "text/plain", "Estado del sistema actualizado");
+        Serial.printf("Sistema: %s\n", system_active ? "ENCENDIDO" : "APAGADO");
+    }
+}
+
+void core1_task(void * pvParameters) {
+    // ... (lógica de conexión WiFi/WireGuard previa)
+
+    // Configurar rutas de la API
+    server.on("/", handleRoot);
+    server.on("/set", handleSetHeight);
+    server.on("/system", handleSystem);
+    server.begin();
+    Serial.println("Servidor API iniciado en Core 1");
+
+    for(;;) {
+        server.handleClient();
+        vTaskDelay(pdMS_TO_TICKS(10)); // Pequeño respiro para el sistema
+    }
+}
+
 
 void setup() {
     Serial.begin(115200);
