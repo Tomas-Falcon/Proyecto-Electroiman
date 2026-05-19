@@ -87,10 +87,10 @@ function updatePowerUI() {
 
 function getHeightDescription(val) {
     const v = parseInt(val);
-    if (v <= 10) return "Aterrizaje / Bajo";
-    if (v <= 20) return "Crucero / Estable";
-    if (v <= 30) return "Alto / Exhibicion";
-    return "Maximo / Riesgo";
+    if (v <= 20) return "Aterrizaje / Bajo";
+    if (v <= 40) return "Crucero / Estable";
+    if (v <= 60) return "Alto / Exhibicion";
+    return "Modo Prototipo / Riesgo";
 }
 
 // Eventos de Control
@@ -129,14 +129,15 @@ modeButtons.forEach(btn => {
         
         // Desbloquear limite de altura si es modo configuracion
         if (mode === 'config') {
-            rangeHeight.max = 100;
-            addLog('MODO CONFIGURACION: Limites de altura desactivados. ¡Cuidado con el consumo!', 'danger');
+            rangeHeight.max = 120; // 12cm para pruebas extremas
+            addLog('MODO CONFIGURACION: Limites extendidos a 120mm. ¡Monitorear consumo!', 'danger');
         } else {
-            rangeHeight.max = 40;
-            if (rangeHeight.value > 40) {
-                rangeHeight.value = 40;
-                valHeight.textContent = 40;
-                socket.emit('set_height', 40);
+            rangeHeight.max = 60; // 6cm limite estandar
+            if (parseInt(rangeHeight.value) > 60) {
+                rangeHeight.value = 60;
+                valHeight.textContent = 60;
+                valHeightDesc.textContent = getHeightDescription(60);
+                socket.emit('set_height', 60);
             }
         }
         
@@ -169,6 +170,13 @@ socket.on('sync_state', (state) => {
     isSystemOn = state.power;
     updatePowerUI();
     
+    // Configurar maximo segun el modo guardado
+    if (state.mode === 'config') {
+        rangeHeight.max = 120;
+    } else {
+        rangeHeight.max = 60;
+    }
+
     rangeHeight.value = state.height;
     valHeight.textContent = state.height;
     valHeightDesc.textContent = getHeightDescription(state.height);
