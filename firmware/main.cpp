@@ -1,82 +1,88 @@
 /*
- * Proyecto Electroimán - Firmware Base
- * Core 0: Control PID y Sensores (Frecuencia Crítica)
- * Core 1: Conectividad (Wi-Fi, BLE, WireGuard, WebSockets)
+ * PROYECTO ELECTROIMÁN - Firmware Híbrido
+ * Core 0 (C Style): Control PID Crítico
+ * Core 1 (C++ Style): Conectividad WireGuard, BLE y API
  */
 
+#include <Arduino.h>
 #include <WiFi.h>
-#include <WiFiProvisioning.h>
 #include <WireGuard-ESP32.h>
 #include <BLEDevice.h>
 #include <BLEUtils.h>
 #include <BLEServer.h>
+#include <Preferences.h>
 
-// --- Configuración de Tareas ---
-TaskHandle_t ControlTask;
-TaskHandle_t ConnectivityTask;
+// ==========================================
+// SECCIÓN CORE 0: CONTROL CRÍTICO (ESTILO C)
+// ==========================================
+// Variables volátiles para comunicación entre núcleos
+volatile float target_height = 20.0f; // mm
+volatile bool system_active = false;
 
-// --- Parámetros WireGuard (Ejemplo - Deben ser provistos vía BLE/NVS) ---
-char wg_private_key[] = "TU_CLAVE_PRIVADA";
-IPAddress wg_local_ip(10, 8, 0, 50);
-char wg_endpoint_address[] = "tu.servidor.vpn";
-uint16_t wg_endpoint_port = 51820;
-char wg_public_key[] = "CLAVE_PUBLICA_SERVIDOR";
+// Prototipo de funciones de control (Lógica pura C)
+void pid_compute_loop() {
+    // Aquí irá la implementación matemática del PID
+    // Optimizada para no usar objetos
+}
 
-void core0_control_loop(void * pvParameters) {
-    Serial.print("Control Task corriendo en Core: ");
-    Serial.println(xPortGetCoreID());
-
+void core0_task(void * pvParameters) {
+    Serial.printf("Core 0: Inicializando lazo de control en nucleo %d\n", xPortGetCoreID());
     for(;;) {
-        // 1. Leer Sensores Hall
-        // 2. Calcular PID
-        // 3. Actualizar PWM Electroimanes
-        
-        vTaskDelay(pdMS_TO_TICKS(0.2)); // Ajuste para ~5kHz (aproximado con RTOS)
+        if(system_active) {
+            pid_compute_loop();
+        }
+        // Delay mínimo para evitar disparar el WDT del sistema
+        // pero manteniendo los ~5kHz deseados.
+        delayMicroseconds(200); 
     }
 }
 
-void core1_connectivity_loop(void * pvParameters) {
-    Serial.print("Connectivity Task corriendo en Core: ");
-    Serial.println(xPortGetCoreID());
+// ==========================================
+// SECCIÓN CORE 1: CONECTIVIDAD (ESTILO C++)
+// ==========================================
+Preferences prefs;
+static WireGuard wg;
 
-    // Inicializar Wi-Fi Provisioning vía BLE
-    // (Lógica simplificada para estructura)
+void core1_task(void * pvParameters) {
+    Serial.printf("Core 1: Inicializando conectividad en nucleo %d\n", xPortGetCoreID());
     
-    for(;;) {
-        if (WiFi.status() == WL_CONNECTED) {
-            // Mantener túnel WireGuard y WebSockets
+    prefs.begin("config", true);
+    String ssid = prefs.getString("ssid", "");
+    String pass = prefs.getString("pass", "");
+    String wg_key = prefs.getString("wgk", "");
+    prefs.end();
+
+    if (ssid != "") {
+        WiFi.begin(ssid.c_str(), pass.c_str());
+        while (WiFi.status() != WL_CONNECTED) {
+            delay(500);
+            Serial.print(".");
         }
-        vTaskDelay(pdMS_TO_TICKS(1000));
+        Serial.println("\nWiFi Conectado");
+
+        // Configuración WireGuard
+        // Nota: Los parámetros IP y Endpoint deben venir de la configuración
+        // IPAddress local_ip(10, 8, 0, 50);
+        // wg.begin(local_ip, wg_key.c_str(), "SERVER_PUBLIC_KEY", "ENDPOINT_URL", 51820);
+    }
+
+    for(;;) {
+        // Aquí se procesarán los comandos entrantes de la Web (vía WireGuard)
+        // Ejemplo: Cambiar target_height o system_active
+        vTaskDelay(pdMS_TO_TICKS(100));
     }
 }
 
 void setup() {
     Serial.begin(115200);
 
-    // Crear tarea de control en Core 0 (Prioridad máxima)
-    xTaskCreatePinnedToCore(
-        core0_control_loop,
-        "ControlTask",
-        10000,
-        NULL,
-        10,
-        &ControlTask,
-        0
-    );
-
-    // Crear tarea de conectividad en Core 1 (Prioridad media)
-    xTaskCreatePinnedToCore(
-        core1_connectivity_loop,
-        "ConnectivityTask",
-        10000,
-        NULL,
-        1,
-        &ConnectivityTask,
-        1
-    );
+    // Prioridad 10 para el Control (Máxima)
+    xTaskCreatePinnedToCore(core0_task, "PID_Ctrl", 4096, NULL, 10, NULL, 0);
+    
+    // Prioridad 1 para Red (Baja/Media)
+    xTaskCreatePinnedToCore(core1_task, "Network", 8192, NULL, 1, NULL, 1);
 }
 
 void loop() {
-    // El loop principal queda libre o se usa para debugging menor
-    vTaskDelete(NULL); 
+    vTaskDelete(NULL);
 }
