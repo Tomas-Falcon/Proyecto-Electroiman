@@ -1,0 +1,18 @@
+{
+  "version": 1,
+  "author": "Tomas Falcon",
+  "editor": "wokwi",
+  "parts": [
+    { "type": "board-esp32-devkit-c-v4", "id": "esp", "top": 0, "left": 0, "attrs": {} },
+    { "type": "wokwi-ds18b20", "id": "temp1", "top": 80, "left": 150, "attrs": {} },
+    { "type": "wokwi-potentiometer", "id": "hall1", "top": 180, "left": -100, "attrs": { "label": "Sensor Hall (Simulado)" } }
+  ],
+  "connections": [
+    [ "esp:3V3", "temp1:VCC", "red", [ "v0" ] ],
+    [ "esp:GND", "temp1:GND", "black", [ "v0" ] ],
+    [ "esp:4", "temp1:DQ", "green", [ "v0" ] ],
+    [ "esp:3V3", "hall1:VCC", "red", [ "v0" ] ],
+    [ "esp:GND", "hall1:GND", "black", [ "v0" ] ],
+    [ "esp:34", "hall1:SIG", "yellow", [ "v0" ] ]
+  ]
+}
