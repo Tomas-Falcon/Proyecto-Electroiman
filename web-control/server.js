@@ -40,6 +40,13 @@ io.on('connection', (socket) => {
         io.emit('sync_state', systemState);
     });
 
+    socket.on('delete_mode', (id) => {
+        if (systemState.modes[id] && systemState.modes[id].type !== 'factory') {
+            delete systemState.modes[id];
+            io.emit('sync_state', systemState);
+        }
+    });
+
     socket.on('reset_factory', () => {
         systemState.modes = { ...FACTORY_MODES };
         systemState.mode = 'crucero';

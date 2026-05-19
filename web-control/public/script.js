@@ -65,15 +65,39 @@ function getHeightDescription(val) {
 function renderModes() {
     modeContainer.innerHTML = '';
     
-    // Modos Dinamicos (del servidor)
     Object.keys(availableModes).forEach(id => {
         const mode = availableModes[id];
         const btn = document.createElement('button');
         btn.className = `btn-mode ${currentMode === id ? 'active' : ''}`;
-        btn.textContent = mode.name;
+        
+        const label = document.createElement('span');
+        label.textContent = mode.name;
+        btn.appendChild(label);
+
+        // Añadir controles si no es de fabrica
+        if (mode.type !== 'factory') {
+            const controls = document.createElement('div');
+            controls.className = 'mode-controls';
+            
+            const editBtn = document.createElement('button');
+            editBtn.className = 'btn-icon edit';
+            editBtn.textContent = '✎';
+            editBtn.onclick = (e) => { e.stopPropagation(); editMode(id); };
+            
+            const delBtn = document.createElement('button');
+            delBtn.className = 'btn-icon delete';
+            delBtn.textContent = '✕';
+            delBtn.onclick = (e) => { e.stopPropagation(); deleteMode(id); };
+            
+            controls.appendChild(editBtn);
+            controls.appendChild(delBtn);
+            btn.appendChild(controls);
+        }
+
         btn.onclick = () => selectMode(id);
         modeContainer.appendChild(btn);
     });
+    // ... resto de botones fijos ...
 
     // Botones Especiales Fijos
     const btnAlign = document.createElement('button');
@@ -87,6 +111,22 @@ function renderModes() {
     btnExp.textContent = 'Experimental';
     btnExp.onclick = () => selectMode('experimental');
     modeContainer.appendChild(btnExp);
+}
+
+function editMode(id) {
+    const mode = availableModes[id];
+    selectMode('experimental');
+    rangeHeight.value = mode.height;
+    valHeight.textContent = mode.height;
+    valHeightDesc.textContent = getHeightDescription(mode.height);
+    addLog(`Editando modo "${mode.name}" en panel experimental`, 'info');
+}
+
+function deleteMode(id) {
+    if(confirm(`¿Eliminar el modo "${availableModes[id].name}"?`)) {
+        socket.emit('delete_mode', id);
+        addLog(`Modo "${availableModes[id].name}" eliminado`, 'warning');
+    }
 }
 
 function selectMode(id) {
