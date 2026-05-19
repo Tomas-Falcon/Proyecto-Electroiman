@@ -11,8 +11,14 @@
 #include <BLEUtils.h>
 #include <BLEServer.h>
 #include <Preferences.h>
-
 #include <WebServer.h>
+#include <OneWire.h>
+#include <DallasTemperature.h>
+
+// ==========================================
+// PINES GPIO
+// ==========================================
+#define ONE_WIRE_BUS 4 // Pin de datos para DS18B20
 
 // ==========================================
 // SECCIÓN CORE 0: CONTROL CRÍTICO (ESTILO C)
@@ -20,8 +26,48 @@
 // Variables volátiles para comunicación entre núcleos
 volatile float target_height = 20.0f; // mm
 volatile bool system_active = false;
+volatile float current_temp = 0.0f;
+volatile bool thermal_fault = false;
 
-// ... (resto del código de control)
+// Objetos de temperatura (Inicializados en Core 0)
+OneWire oneWire(ONE_WIRE_BUS);
+DallasTemperature sensors(&oneWire);
+
+// Prototipo de funciones de control (Lógica pura C)
+void pid_compute_loop() {
+    // Aquí irá la implementación matemática del PID
+}
+
+void core0_task(void * pvParameters) {
+    Serial.printf("Core 0: Inicializando lazo de control en nucleo %d\n", xPortGetCoreID());
+    
+    sensors.begin();
+    int temp_read_counter = 0;
+
+    for(;;) {
+        // Monitoreo termico cada ~1 segundo (5000 iteraciones de 200us)
+        if (temp_read_counter++ >= 5000) {
+            sensors.requestTemperatures();
+            current_temp = sensors.getTempCByIndex(0);
+            
+            // Corte de seguridad por temperatura (>50C)
+            if (current_temp > 50.0f && system_active) {
+                system_active = false;
+                thermal_fault = true;
+                Serial.printf("FALLO TERMICO: %.2fC. Sistema apagado.\n", current_temp);
+            } else if (current_temp < 45.0f) {
+                thermal_fault = false; // Reset de falla si enfria
+            }
+            temp_read_counter = 0;
+        }
+
+        if(system_active && !thermal_fault) {
+            pid_compute_loop();
+        }
+        
+        delayMicroseconds(200); 
+    }
+}
 
 // ==========================================
 // SECCIÓN CORE 1: CONECTIVIDAD (ESTILO C++)
@@ -31,7 +77,12 @@ static WireGuard wg;
 WebServer server(80); // Servidor en puerto 80
 
 void handleRoot() {
-    server.send(200, "text/plain", "Proyecto Electroiman - API Online");
+    String response = "Proyecto Electroiman - API Online\n";
+    response += "Altura Objetivo: " + String(target_height) + " mm\n";
+    response += "Estado: " + String(system_active ? "ENCENDIDO" : "APAGADO") + "\n";
+    response += "Temperatura: " + String(current_temp) + " C\n";
+    if (thermal_fault) response += "ALERTA: Falla Termica Detectada!\n";
+    server.send(200, "text/plain", response);
 }
 
 void handleSetHeight() {
