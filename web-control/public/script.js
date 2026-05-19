@@ -126,6 +126,20 @@ modeButtons.forEach(btn => {
         modeButtons.forEach(b => b.classList.remove('active'));
         btn.classList.add('active');
         const mode = btn.getAttribute('data-mode');
+        
+        // Desbloquear limite de altura si es modo configuracion
+        if (mode === 'config') {
+            rangeHeight.max = 100;
+            addLog('MODO CONFIGURACION: Limites de altura desactivados. ¡Cuidado con el consumo!', 'danger');
+        } else {
+            rangeHeight.max = 40;
+            if (rangeHeight.value > 40) {
+                rangeHeight.value = 40;
+                valHeight.textContent = 40;
+                socket.emit('set_height', 40);
+            }
+        }
+        
         socket.emit('set_mode', mode);
         addLog(`Modo cambiado a: ${mode}`, 'instruction');
     });
