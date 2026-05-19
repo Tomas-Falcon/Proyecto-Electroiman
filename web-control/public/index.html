@@ -17,9 +17,25 @@
         <nav class="tab-nav">
             <button class="tab-btn active" data-target="control-view">Control</button>
             <button class="tab-btn" data-target="logs-view">Logs</button>
+            <button class="tab-btn" data-target="settings-view">Ajustes</button>
         </nav>
 
         <main id="control-view" class="tab-content active">
+...
+        <main id="settings-view" class="tab-content">
+            <section class="card settings-container">
+                <h2>Configuracion Global</h2>
+                <div class="setting-item">
+                    <label>Altura Maxima de Seguridad (Modos Estandar)</label>
+                    <div class="setting-control">
+                        <input type="number" id="global-max-z" value="60" min="20" max="100">
+                        <span>mm</span>
+                    </div>
+                    <small>Este limite no afecta a los modos Experimental o Alineacion.</small>
+                </div>
+                <button id="btn-save-settings" class="btn btn-accent" style="margin-top: 20px;">Aplicar Cambios Globales</button>
+            </section>
+        </main>
             <section class="card main-control">
                 <h2>Control Maestro (Soft Start/Stop)</h2>
                 <div class="power-toggle">

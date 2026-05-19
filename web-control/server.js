@@ -14,14 +14,21 @@ let systemState = {
     power: false,
     height: 20,
     offsetY: 0,
-    mode: 'crucero'
+    mode: 'crucero',
+    globalMaxHeight: 60
 };
 
 app.use(express.static('public'));
 
 io.on('connection', (socket) => {
-    // Sincronizar estado actual con el cliente que se conecta
     socket.emit('sync_state', systemState);
+
+    socket.on('set_settings', (data) => {
+        if (data.globalMaxHeight !== undefined) {
+            systemState.globalMaxHeight = data.globalMaxHeight;
+            io.emit('sync_state', systemState); // Propagar cambio a todos
+        }
+    });
 
     socket.on('set_height', async (height) => {
         systemState.height = height;

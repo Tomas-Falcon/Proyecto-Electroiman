@@ -89,6 +89,19 @@ rangeHeight.addEventListener('change', (e) => {
     socket.emit('set_height', e.target.value);
 });
 
+const globalMaxZInput = document.getElementById('global-max-z');
+const btnSaveSettings = document.getElementById('btn-save-settings');
+
+let globalMaxHeight = 60;
+
+// Gestion de Ajustes
+btnSaveSettings.addEventListener('click', () => {
+    globalMaxHeight = parseInt(globalMaxZInput.value);
+    socket.emit('set_settings', { globalMaxHeight });
+    addLog(`Configuracion global actualizada: Max Z = ${globalMaxHeight}mm`, 'info');
+});
+
+// Modificar la logica de modos para usar el limite global
 modeButtons.forEach(btn => {
     btn.addEventListener('click', () => {
         modeButtons.forEach(b => b.classList.remove('active'));
@@ -97,39 +110,59 @@ modeButtons.forEach(btn => {
         
         updateUIVisibility(currentMode);
         
-        // Aplicar presets si no es experimental/alineacion
+        // Limites Dinamicos
+        if (currentMode === 'experimental') {
+            rangeHeight.max = 120;
+            addLog('Modo Experimental: Limites de altura extendidos (120mm)', 'danger');
+        } else if (currentMode === 'alineacion') {
+            rangeHeight.max = 100;
+        } else {
+            rangeHeight.max = globalMaxHeight; // Aplicar limite global
+            if (parseInt(rangeHeight.value) > globalMaxHeight) {
+                rangeHeight.value = globalMaxHeight;
+                valHeight.textContent = globalMaxHeight;
+                valHeightDesc.textContent = getHeightDescription(globalMaxHeight);
+                socket.emit('set_height', globalMaxHeight);
+            }
+        }
+        
         if (modePresets[currentMode]) {
             const preset = modePresets[currentMode];
-            socket.emit('set_height', preset.height);
-            addLog(`Modo ${currentMode}: Altura auto-ajustada a ${preset.height}mm`, 'info');
+            let targetZ = preset.height;
+            // Asegurar que el preset no supere el maximo global en modos estandar
+            if (currentMode !== 'experimental' && currentMode !== 'alineacion') {
+                targetZ = Math.min(targetZ, globalMaxHeight);
+            }
+            socket.emit('set_height', targetZ);
+            addLog(`Modo ${currentMode}: Altura auto-ajustada a ${targetZ}mm`, 'info');
         }
 
         socket.emit('set_mode', currentMode);
     });
 });
 
-// Alineacion Haptica
-const btnCapture = document.getElementById('btn-capture-config');
-btnCapture.addEventListener('click', () => {
-    const config = {
-        z: document.getElementById('cap-z').textContent,
-        rot: document.getElementById('cap-rot').textContent,
-        speed: document.getElementById('cap-speed').textContent
-    };
-    addLog(`Configuracion capturada: Z=${config.z}, Rot=${config.rot}`, 'instruction');
-    // Aqui se podria enviar al servidor para guardar en DB/Archivo
-});
-
-// Sockets
+// Sincronizacion de estado inicial
 socket.on('sync_state', (state) => {
     isSystemOn = state.power;
     currentMode = state.mode;
+    globalMaxHeight = state.globalMaxHeight || 60;
+    
     updatePowerUI();
     updateUIVisibility(currentMode);
     
+    globalMaxZInput.value = globalMaxHeight;
+
+    // Configurar maximo segun el modo guardado
+    if (currentMode === 'experimental') rangeHeight.max = 120;
+    else if (currentMode === 'alineacion') rangeHeight.max = 100;
+    else rangeHeight.max = globalMaxHeight;
+
     rangeHeight.value = state.height;
     valHeight.textContent = state.height;
     valHeightDesc.textContent = getHeightDescription(state.height);
+    
+    rangeOffsetY.value = state.offsetY;
+    valOffsetY.textContent = state.offsetY;
     
     modeButtons.forEach(btn => {
         if (btn.getAttribute('data-mode') === currentMode) btn.classList.add('active');

@@ -173,8 +173,41 @@ h1 { font-size: 1.2rem; font-weight: 800; text-transform: uppercase; letter-spac
 
 .btn-accent { background: var(--accent); color: var(--bg); }
 
-.card.sliders, .card.alignment {
-    border-left: 4px solid var(--accent);
+.setting-item {
+    margin-bottom: 25px;
+    padding-bottom: 15px;
+    border-bottom: 1px solid rgba(255,255,255,0.05);
+}
+
+.setting-item label {
+    display: block;
+    font-size: 0.9rem;
+    margin-bottom: 10px;
+    color: #94a3b8;
+}
+
+.setting-control {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.setting-control input[type="number"] {
+    background: #0f172a;
+    border: 1px solid #334155;
+    color: var(--accent);
+    padding: 8px 12px;
+    border-radius: 6px;
+    width: 80px;
+    font-weight: 700;
+}
+
+.setting-item small {
+    display: block;
+    margin-top: 8px;
+    color: #64748b;
+    font-size: 0.75rem;
+    line-height: 1.4;
 }
 
 @keyframes pulse-danger {
