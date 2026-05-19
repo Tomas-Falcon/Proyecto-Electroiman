@@ -42,14 +42,83 @@ h1 { font-size: 1.2rem; font-weight: 800; text-transform: uppercase; letter-spac
 }
 
 .offline { background: #334155; color: #94a3b8; }
-.online { background: var(--on); color: white; box-shadow: 0 0 10px rgba(34, 197, 94, 0.5); }
+.tab-nav {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 20px;
+}
 
-.card {
-    background: var(--card-bg);
-    border-radius: 16px;
-    padding: 20px;
-    margin-bottom: 16px;
-    border: 1px solid rgba(255,255,255,0.05);
+.tab-btn {
+    flex: 1;
+    background: #334155;
+    border: none;
+    color: #94a3b8;
+    padding: 12px;
+    border-radius: 8px;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.tab-btn.active {
+    background: var(--accent);
+    color: var(--bg);
+}
+
+.tab-content {
+    display: none;
+}
+
+.tab-content.active {
+    display: block;
+}
+
+.logs-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 15px;
+}
+
+.btn-small {
+    background: #475569;
+    color: white;
+    border: none;
+    padding: 4px 10px;
+    border-radius: 4px;
+    font-size: 0.7rem;
+    cursor: pointer;
+}
+
+.log-list {
+    height: 300px;
+    overflow-y: auto;
+    font-family: 'Courier New', monospace;
+    font-size: 0.8rem;
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+}
+
+.log-entry {
+    padding: 6px 10px;
+    border-radius: 4px;
+    background: rgba(0,0,0,0.2);
+    border-left: 3px solid #64748b;
+}
+
+.log-entry.control { border-left-color: var(--accent); }
+.log-entry.network { border-left-color: var(--on); }
+.log-entry.error { border-left-color: var(--off); }
+
+.log-time { color: #64748b; margin-right: 8px; font-size: 0.7rem; }
+.log-tag { 
+    text-transform: uppercase; 
+    font-weight: 800; 
+    font-size: 0.65rem; 
+    margin-right: 8px;
+    padding: 1px 4px;
+    border-radius: 3px;
+    background: #334155;
 }
 
 h2 { font-size: 0.9rem; color: #94a3b8; margin-bottom: 15px; text-transform: uppercase; }

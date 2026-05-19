@@ -14,46 +14,65 @@
             <div id="status-badge" class="badge offline">Offline</div>
         </header>
 
-        <section class="card main-control">
-            <h2>Control Maestro</h2>
-            <div class="power-toggle">
-                <button id="btn-power" class="btn btn-off">ENCENDER SISTEMA</button>
-            </div>
-        </section>
+        <nav class="tab-nav">
+            <button class="tab-btn active" data-target="control-view">Control</button>
+            <button class="tab-btn" data-target="logs-view">Logs</button>
+        </nav>
 
-        <section class="card modes">
-            <h2>Modos de Operación</h2>
-            <div class="mode-grid">
-                <button class="btn-mode active" data-mode="crucero">Crucero</button>
-                <button class="btn-mode" data-mode="carrera">Carrera</button>
-                <button class="btn-mode" data-mode="docking">Auto-Docking</button>
-            </div>
-        </section>
-
-        <section class="card sliders">
-            <div class="slider-group">
-                <label>Altura Objetivo (Z): <span id="val-height">20</span>mm</label>
-                <input type="range" id="range-height" min="10" max="40" value="20">
-            </div>
-            <div class="slider-group">
-                <label>Ajuste Eje Y (Offset): <span id="val-offset-y">0</span></label>
-                <input type="range" id="range-offset-y" min="-50" max="50" value="0">
-            </div>
-        </section>
-
-        <section class="card telemetry">
-            <h2>Telemetría</h2>
-            <div class="telemetry-grid">
-                <div class="tel-item">
-                    <small>Core 0</small>
-                    <span id="tel-core0">5.0 kHz</span>
+        <main id="control-view" class="tab-content active">
+            <section class="card main-control">
+                <h2>Control Maestro (Soft Start/Stop)</h2>
+                <div class="power-toggle">
+                    <button id="btn-power" class="btn btn-off">ENCENDER SISTEMA</button>
                 </div>
-                <div class="tel-item">
-                    <small>Batería Qi</small>
-                    <span id="tel-batt">-- %</span>
+            </section>
+
+            <section class="card modes">
+                <h2>Modos de Operación</h2>
+                <div class="mode-grid">
+                    <button class="btn-mode active" data-mode="crucero">Crucero</button>
+                    <button class="btn-mode" data-mode="carrera">Carrera</button>
+                    <button class="btn-mode" data-mode="docking">Auto-Docking</button>
                 </div>
-            </div>
-        </section>
+            </section>
+
+            <section class="card sliders">
+                <div class="slider-group">
+                    <label>Altura Objetivo (Z): <span id="val-height">20</span>mm</label>
+                    <input type="range" id="range-height" min="10" max="40" value="20">
+                </div>
+                <div class="slider-group">
+                    <label>Ajuste Eje Y (Offset): <span id="val-offset-y">0</span></label>
+                    <input type="range" id="range-offset-y" min="-50" max="50" value="0">
+                </div>
+            </section>
+
+            <section class="card telemetry">
+                <h2>Telemetría</h2>
+                <div class="telemetry-grid">
+                    <div class="tel-item">
+                        <small>Core 0</small>
+                        <span id="tel-core0">5.0 kHz</span>
+                    </div>
+                    <div class="tel-item">
+                        <small>Batería Qi</small>
+                        <span id="tel-batt">-- %</span>
+                    </div>
+                </div>
+            </section>
+        </main>
+
+        <main id="logs-view" class="tab-content">
+            <section class="card logs-container">
+                <div class="logs-header">
+                    <h2>Registros del Sistema</h2>
+                    <button id="btn-clear-logs" class="btn-small">Limpiar</button>
+                </div>
+                <div id="log-list" class="log-list">
+                    <!-- Los logs aparecerán aquí -->
+                </div>
+            </section>
+        </main>
     </div>
 
     <script src="/socket.io/socket.io.js"></script>

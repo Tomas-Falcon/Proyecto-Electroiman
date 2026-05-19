@@ -11,34 +11,75 @@ const statusBadge = document.getElementById('status-badge');
 
 let isSystemOn = false;
 
-// Gestión de Encendido/Apagado
-btnPower.addEventListener('click', () => {
-    isSystemOn = !isSystemOn;
-    updatePowerUI();
-    socket.emit('toggle_system', isSystemOn);
+// Gestión de Pestañas
+const tabButtons = document.querySelectorAll('.tab-btn');
+const tabContents = document.querySelectorAll('.tab-content');
+
+tabButtons.forEach(btn => {
+    btn.addEventListener('click', () => {
+        const target = btn.getAttribute('data-target');
+        
+        tabButtons.forEach(b => b.classList.remove('active'));
+        tabContents.forEach(c => c.classList.remove('active'));
+        
+        btn.classList.add('active');
+        document.getElementById(target).classList.add('active');
+    });
 });
 
-function updatePowerUI() {
-    if (isSystemOn) {
-        btnPower.textContent = "APAGAR SISTEMA";
-        btnPower.classList.replace('btn-off', 'btn-on');
-        statusBadge.textContent = "Online";
-        statusBadge.classList.replace('offline', 'online');
-    } else {
-        btnPower.textContent = "ENCENDER SISTEMA";
-        btnPower.classList.replace('btn-on', 'btn-off');
-        statusBadge.textContent = "Offline";
-        statusBadge.classList.replace('online', 'offline');
+// Gestión de Logs
+const logList = document.getElementById('log-list');
+const btnClearLogs = document.getElementById('btn-clear-logs');
+
+function addLog(msg, type = 'info') {
+    const time = new Date().toLocaleTimeString();
+    const entry = document.createElement('div');
+    entry.className = `log-entry ${type}`;
+    
+    let tag = 'INFO';
+    if(type === 'control') tag = 'CTRL';
+    if(type === 'network') tag = 'NETW';
+    if(type === 'error') tag = 'ERR!';
+
+    entry.innerHTML = `
+        <span class="log-time">${time}</span>
+        <span class="log-tag">${tag}</span>
+        <span class="log-msg">${msg}</span>
+    `;
+    
+    logList.prepend(entry);
+    
+    // Limitar a 50 logs para no saturar
+    if (logList.children.length > 50) {
+        logList.lastChild.remove();
     }
 }
 
-// Gestión de Altura
-rangeHeight.addEventListener('input', (e) => {
-    valHeight.textContent = e.target.value;
+btnClearLogs.addEventListener('click', () => {
+    logList.innerHTML = '';
+});
+
+// Modificación de los eventos existentes para incluir logs
+btnPower.addEventListener('click', () => {
+    isSystemOn = !isSystemOn;
+    updatePowerUI();
+    const action = isSystemOn ? 'Encendido (Soft Start)' : 'Apagado (Soft Stop)';
+    addLog(`Sistema: ${action}`, 'control');
+    socket.emit('toggle_system', isSystemOn);
 });
 
 rangeHeight.addEventListener('change', (e) => {
-    socket.emit('set_height', e.target.value);
+    const val = e.target.value;
+    addLog(`Target Z: ${val}mm`, 'control');
+    socket.emit('set_height', val);
+});
+
+socket.on('connect', () => {
+    addLog('Conectado al servidor de control', 'network');
+});
+
+socket.on('disconnect', () => {
+    addLog('Desconectado del servidor', 'error');
 });
 
 // Gestión de Offset Eje Y
