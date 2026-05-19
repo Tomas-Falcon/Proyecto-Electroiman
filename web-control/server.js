@@ -51,18 +51,21 @@ io.on('connection', (socket) => {
     });
 });
 
-// Simulacion de telemetria para pruebas
-setInterval(() => {
-    if (systemState.power) {
-        // Simular variaciones leves
-        const telemetry = {
-            temp: (25 + Math.random() * 5 + (systemState.height / 2)).toFixed(1),
-            core0: (4.9 + Math.random() * 0.2).toFixed(1),
-            batt: (80 + Math.random() * 5).toFixed(0)
-        };
-        io.emit('telemetry', telemetry);
-    }
-}, 2000);
+app.use(express.json());
+
+// Endpoint para recibir telemetria real del ESP32
+app.post('/telemetry', (req) => {
+    const data = req.body;
+    
+    // Actualizar estado interno con datos reales
+    if (data.temp !== undefined) systemState.temp = data.temp;
+    if (data.height !== undefined) systemState.height = data.height;
+    if (data.power !== undefined) systemState.power = data.power;
+    if (data.core0 !== undefined) systemState.core0 = data.core0;
+
+    // Reemitir a todos los clientes web
+    io.emit('telemetry', data);
+});
 
 const PORT = 3000;
 server.listen(PORT, () => {

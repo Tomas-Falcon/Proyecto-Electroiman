@@ -43,43 +43,68 @@ void add_system_log(const char* msg) {
     // En el futuro, enviar esto via WebSocket al servidor central
 }
 
+#include <HTTPClient.h>
+
+// --- Configuración Multiplexor ---
+const int MUX_S0 = 5;
+const int MUX_S1 = 18;
+const int MUX_S2 = 19;
+const int MUX_S3 = 22;
+const int MUX_SIG = 34;
+
+// --- Configuración Servidor ---
+const char* server_url = "http://100.84.55.19:3000/telemetry";
+
+void select_mux_channel(int channel) {
+    digitalWrite(MUX_S0, bitRead(channel, 0));
+    digitalWrite(MUX_S1, bitRead(channel, 1));
+    digitalWrite(MUX_S2, bitRead(channel, 2));
+    digitalWrite(MUX_S3, bitRead(channel, 3));
+    delayMicroseconds(10); 
+}
+
+float read_hall_sensor(int channel) {
+    select_mux_channel(channel);
+    return analogRead(MUX_SIG);
+}
+
+void send_telemetry() {
+    if (WiFi.status() == WL_CONNECTED) {
+        HTTPClient http;
+        http.begin(server_url);
+        http.addHeader("Content-Type", "application/json");
+        
+        String json = "{\"temp\":" + String(current_temp) + 
+                      ",\"height\":" + String(target_height) + 
+                      ",\"power\":" + String(system_active ? "true" : "false") + 
+                      ",\"core0\":5.0}";
+        
+        http.POST(json);
+        http.end();
+    }
+}
+
 void core0_task(void * pvParameters) {
     Serial.printf("Core 0: Inicializando lazo de control en nucleo %d\n", xPortGetCoreID());
     
+    pinMode(MUX_S0, OUTPUT);
+    pinMode(MUX_S1, OUTPUT);
+    pinMode(MUX_S2, OUTPUT);
+    pinMode(MUX_S3, OUTPUT);
+    
     sensors.begin();
-    int temp_read_counter = 0;
+    int telemetry_counter = 0;
 
     for(;;) {
-        // Monitoreo termico cada ~1 segundo (5000 iteraciones de 200us)
-        if (temp_read_counter++ >= 5000) {
-            sensors.requestTemperatures();
-            current_temp = sensors.getTempCByIndex(0);
-            
-            // Gestion de seguridad por temperatura
-            if (current_temp > 50.0f) {
-                if (!thermal_fault) {
-                    thermal_fault = true;
-                    add_system_log("ALERTA: Temperatura critica detectada. Iniciando descenso de seguridad.");
-                }
-                
-                // Descenso paulatino: bajamos la altura objetivo gradualmente
-                if (target_height > 0.0f) {
-                    target_height -= 0.5f; // Rampa de descenso
-                    if (target_height < 0.0f) target_height = 0.0f;
-                } else {
-                    system_active = false; // Solo apagamos totalmente al llegar abajo
-                }
-            } else if (current_temp < 45.0f && thermal_fault) {
-                thermal_fault = false; 
-                add_system_log("Info: Temperatura normalizada. Sistema listo.");
-            }
-            temp_read_counter = 0;
+        // Lógica de control PID simplificada
+        float hall_val = read_hall_sensor(0); // Leer sensor 0
+        
+        // Empuje de telemetria cada 500ms
+        if (telemetry_counter++ >= 2500) {
+            send_telemetry();
+            telemetry_counter = 0;
         }
 
-        if(system_active && !thermal_fault) {
-            pid_compute_loop();
-        }
-        
         delayMicroseconds(200); 
     }
 }

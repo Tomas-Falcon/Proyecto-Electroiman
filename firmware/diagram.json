@@ -4,15 +4,27 @@
   "editor": "wokwi",
   "parts": [
     { "type": "board-esp32-devkit-c-v4", "id": "esp", "top": 0, "left": 0, "attrs": {} },
-    { "type": "wokwi-ds18b20", "id": "temp1", "top": 80, "left": 150, "attrs": {} },
-    { "type": "wokwi-potentiometer", "id": "hall1", "top": 180, "left": -100, "attrs": { "label": "Sensor Hall (Simulado)" } }
+    { "type": "wokwi-ds18b20", "id": "temp1", "top": 80, "left": 150, "attrs": { "name": "Sensor Termico 1" } },
+    { "type": "wokwi-ds18b20", "id": "temp2", "top": 120, "left": 150, "attrs": { "name": "Sensor Termico 2" } },
+    { "type": "wokwi-cd74hc4067", "id": "mux", "top": 200, "left": 100, "attrs": {} },
+    { "type": "wokwi-potentiometer", "id": "hall_sim", "top": 250, "left": -50, "attrs": { "label": "Hall Simulado (MUX C0)" } }
   ],
   "connections": [
     [ "esp:3V3", "temp1:VCC", "red", [ "v0" ] ],
     [ "esp:GND", "temp1:GND", "black", [ "v0" ] ],
     [ "esp:4", "temp1:DQ", "green", [ "v0" ] ],
-    [ "esp:3V3", "hall1:VCC", "red", [ "v0" ] ],
-    [ "esp:GND", "hall1:GND", "black", [ "v0" ] ],
-    [ "esp:34", "hall1:SIG", "yellow", [ "v0" ] ]
+    [ "temp1:DQ", "temp2:DQ", "green", [] ],
+    [ "esp:3V3", "temp2:VCC", "red", [] ],
+    [ "esp:GND", "temp2:GND", "black", [] ],
+    [ "esp:GND", "mux:GND", "black", [ "v0" ] ],
+    [ "esp:3V3", "mux:VCC", "red", [ "v0" ] ],
+    [ "esp:34", "mux:SIG", "yellow", [ "v0" ] ],
+    [ "esp:5", "mux:S0", "orange", [ "v0" ] ],
+    [ "esp:18", "mux:S1", "orange", [ "v0" ] ],
+    [ "esp:19", "mux:S2", "orange", [ "v0" ] ],
+    [ "esp:22", "mux:S3", "orange", [ "v0" ] ],
+    [ "hall_sim:SIG", "mux:C0", "blue", [ "v0" ] ],
+    [ "esp:GND", "hall_sim:GND", "black", [] ],
+    [ "esp:3V3", "hall_sim:VCC", "red", [] ]
   ]
 }
