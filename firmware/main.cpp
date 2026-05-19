@@ -55,18 +55,51 @@ void handleSystem() {
 }
 
 void core1_task(void * pvParameters) {
-    // ... (lógica de conexión WiFi/WireGuard previa)
+    Serial.printf("Core 1: Inicializando conectividad en nucleo %d\n", xPortGetCoreID());
+    
+    prefs.begin("config", true);
+    String ssid = prefs.getString("ssid", "");
+    String pass = prefs.getString("pass", "");
+    String local_ip_str = prefs.getString("local_ip", "10.8.0.50");
+    String wg_private_key = prefs.getString("wgk", "");
+    String endpoint_address = prefs.getString("endpoint", "tu.servidor.vpn");
+    String server_public_key = prefs.getString("server_pub", "");
+    uint16_t endpoint_port = prefs.getUInt("port", 51820);
+    bool configured = prefs.getBool("configured", false);
+    prefs.end();
 
-    // Configurar rutas de la API
+    if (configured && ssid != "") {
+        WiFi.begin(ssid.c_str(), pass.c_str());
+        while (WiFi.status() != WL_CONNECTED) {
+            delay(500);
+            Serial.print(".");
+        }
+        Serial.println("\nWiFi Conectado");
+
+        IPAddress local_ip;
+        if (local_ip.fromString(local_ip_str)) {
+            Serial.println("Estableciendo tunel WireGuard...");
+            if (wg.begin(local_ip, wg_private_key.c_str(), server_public_key.c_str(), endpoint_address.c_str(), endpoint_port)) {
+                Serial.println("Tunel WireGuard OK");
+            } else {
+                Serial.println("Fallo al establecer WireGuard");
+            }
+        }
+    } else {
+        // Si no esta configurado, se activa el modo BLE (se asume implementado segun el plan previo)
+        Serial.println("Dispositivo no configurado. Esperando BLE...");
+    }
+
+    // Rutas de la API
     server.on("/", handleRoot);
     server.on("/set", handleSetHeight);
     server.on("/system", handleSystem);
     server.begin();
-    Serial.println("Servidor API iniciado en Core 1");
+    Serial.println("Servidor API iniciado");
 
     for(;;) {
         server.handleClient();
-        vTaskDelay(pdMS_TO_TICKS(10)); // Pequeño respiro para el sistema
+        vTaskDelay(pdMS_TO_TICKS(10));
     }
 }
 
