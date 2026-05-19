@@ -1,0 +1,9 @@
+services:
+  web-control:
+    build: .
+    container_name: electroiman-web-control
+    ports:
+      - "3000:3000"
+    restart: always
+    environment:
+      - NODE_ENV=production
